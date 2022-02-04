@@ -7,4 +7,6 @@
     notifempty
     copytruncate
     create 644 root root
+    dateext
+    dateformat .%Y-%m-%d
 }
