@@ -66,7 +66,7 @@ def get_tag_of_github_repo(repo):
     import json
 
     try:
-        url = "https://api.github.com/repos/mrbeam/{repo}/tags".format(repo=repo)
+        url = "https://api.github.com/repos/Josef-MrBeam/{repo}/tags".format(repo=repo)
         headers = {
             "Accept": "application/json",
         }
