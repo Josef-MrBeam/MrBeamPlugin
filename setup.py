@@ -89,6 +89,9 @@ additional_setup_parameters = {
 ########################################################################################################################
 
 from setuptools import setup
+from setuptools.extern.packaging import version
+
+version.Version = version.LegacyVersion
 
 try:
     import octoprint_setuptools
