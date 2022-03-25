@@ -1,4 +1,4 @@
-iobeam==0.7.15
-mrb-hw-info==0.0.25
-mrbeam-ledstrips==0.2.2
-mrbeamdoc==0.1.2
+iobeam==0.8.0
+mrb-hw-info==0.1.0
+mrbeam-ledstrips==0.3.0
+mrbeamdoc==1.0.0
