@@ -3028,6 +3028,7 @@ class MrBeamPlugin(
 # can be overwritten via __plugin_xyz__ control properties. See the documentation for that.
 
 __plugin_name__ = "Mr Beam Laser Cutter"
+__plugin_version__ = __version__
 
 
 def __plugin_load__():
