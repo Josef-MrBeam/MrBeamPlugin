@@ -27,7 +27,7 @@ def get_file_of_repo_for_tag(file, repo, tag):
         content of file
     """
     try:
-        url = "https://api.github.com/repos/mrbeam/{repo}/contents/{file}?ref={tag}".format(
+        url = "https://api.github.com/repos/Josef-MrBeam/{repo}/contents/{file}?ref={tag}".format(
             repo=repo, file=file, tag=tag
         )
 
