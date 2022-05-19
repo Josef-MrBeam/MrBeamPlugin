@@ -13,7 +13,6 @@ import time
 import datetime
 import collections
 import logging
-import unicodedata
 from subprocess import check_output
 
 import octoprint.plugin
@@ -39,9 +38,6 @@ IS_X86 = platform.machine() == "x86_64"
 from ._version import get_versions
 
 __version__ = get_versions()["version"]
-if isinstance(__version__, unicode):
-    __version__ = unicodedata.normalize('NFKD', __version__).encode('ascii', 'ignore')
-
 del get_versions
 
 from octoprint_mrbeam.iobeam.iobeam_handler import ioBeamHandler, IoBeamEvents
