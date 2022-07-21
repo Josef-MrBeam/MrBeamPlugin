@@ -4,6 +4,7 @@ from __future__ import absolute_import
 import __builtin__
 import copy
 import json
+import operator
 import os
 import platform
 import pprint
@@ -13,7 +14,9 @@ import time
 import datetime
 import collections
 import logging
+import unicodedata
 from subprocess import check_output
+import pkg_resources
 
 import octoprint.plugin
 import requests
@@ -38,6 +41,9 @@ IS_X86 = platform.machine() == "x86_64"
 from ._version import get_versions
 
 __version__ = get_versions()["version"]
+if isinstance(__version__, unicode):
+    __version__ = unicodedata.normalize('NFKD', __version__).encode('ascii', 'ignore')
+
 del get_versions
 
 from octoprint_mrbeam.iobeam.iobeam_handler import ioBeamHandler, IoBeamEvents
@@ -100,6 +106,7 @@ from octoprint_mrbeam.util.flask import (
 from octoprint_mrbeam.util.uptime import get_uptime, get_uptime_human_readable
 from octoprint_mrbeam.util import get_thread
 from octoprint_mrbeam import camera
+from octoprint_mrbeam.util.version_comparator import compare_pep440_versions
 
 # this is a easy&simple way to access the plugin and all injections everywhere within the plugin
 __builtin__._mrbeam_plugin_implementation = None
@@ -155,6 +162,7 @@ class MrBeamPlugin(
     TIME_NTP_SYNC_CHECK_INTERVAL_FAST = 10.0
     TIME_NTP_SYNC_CHECK_INTERVAL_SLOW = 120.0
 
+
     def __init__(self):
         self.mrbeam_plugin_initialized = False
         self._shutting_down = False
@@ -175,6 +183,7 @@ class MrBeamPlugin(
         self._serial_num = None
         self._mac_addrs = dict()
         self._model_id = None
+        self._explicit_update_check = False
         self._grbl_version = None
         self._device_series = self._device_info.get_series()
         self.called_hosts = []
@@ -257,10 +266,10 @@ class MrBeamPlugin(
         self.led_event_listener.set_fps(self._settings.get(["leds", "fps"]))
         # start iobeam socket only once other handlers are already initialized so that we can handle info message
         self.iobeam = ioBeamHandler(self)
-        self.temperature_manager = temperatureManager(self)
         self.dust_manager = dustManager(self)
         self.hw_malfunction_handler = hwMalfunctionHandler(self)
         self.laserhead_handler = laserheadHandler(self)
+        self.temperature_manager = temperatureManager(self)
         self.compressor_handler = compressor_handler(self)
         self.wizard_config = WizardConfig(self)
         self.job_time_estimation = JobTimeEstimation(self)
@@ -738,6 +747,16 @@ class MrBeamPlugin(
         self._fixEmptyUserManager()
         return ret
 
+    @property
+    def explicit_update_check(self):
+        return self._explicit_update_check
+
+    def set_explicit_update_check(self):
+        self._explicit_update_check = True
+
+    def clear_explicit_update_check(self):
+        self._explicit_update_check = False
+
     ##~~ UiPlugin mixin
 
     def will_handle_ui(self, request):
@@ -811,7 +830,7 @@ class MrBeamPlugin(
                 now=now,
                 init_ts_ms=time.time() * 1000,
                 language=language,
-                beamosVersionNumber=self._plugin_version,
+                mrBeamPluginVersionNumber=self._plugin_version,
                 beamosVersionBranch=self._branch,
                 beamosVersionDisplayVersion=display_version_string,
                 beamosVersionImage=self._octopi_info,
@@ -1281,6 +1300,16 @@ class MrBeamPlugin(
             res = dict(calibration_pattern=destFile, target=FileDestinations.LOCAL)
             return jsonify(res)
 
+    # simpleApiCommand: compare_pep440_versions;
+    def handle_pep440_comparison_result(self, data):
+        try:
+            result = compare_pep440_versions(data['v1'], data['v2'], data['operator'])
+            return make_response(json.dumps(result), 200)
+        except KeyError as e:
+            self._logger.error("Key is missing in data: %s", e)
+            return make_response(json.dumps(None), 500)
+
+
     # ~~ helpers
 
     # helper method to write data to user settings
@@ -1347,7 +1376,7 @@ class MrBeamPlugin(
             locales=dict(),
             supportedExtensions=[],
             # beamOS version
-            beamosVersionNumber=self._plugin_version,
+            mrBeamPluginVersionNumber=self._plugin_version,
             beamosVersionBranch=self._branch,
             beamosVersionDisplayVersion=display_version_string,
             beamosVersionImage=self._octopi_info,
@@ -1913,6 +1942,7 @@ class MrBeamPlugin(
             camera_stop_lens_calibration=[],
             generate_calibration_markers_svg=[],
             cancel_final_extraction=[],
+            compare_pep440_versions=[]
         )
 
     def on_api_command(self, command, data):
@@ -2040,6 +2070,8 @@ class MrBeamPlugin(
             )  # TODO move this func to other file
         elif command == "cancel_final_extraction":
             self.dust_manager.set_user_abort_final_extraction()
+        elif command == "compare_pep440_versions":
+            return self.handle_pep440_comparison_result(data)
 
         return NO_CONTENT
 
@@ -2981,10 +3013,10 @@ class MrBeamPlugin(
                 timer.start()
 
     def is_beta_channel(self):
-        return self._settings.get(["dev", "software_tier"]) == SWUpdateTier.BETA
+        return self._settings.get(["dev", "software_tier"]) == SWUpdateTier.BETA.value
 
     def is_develop_channel(self):
-        return self._settings.get(["dev", "software_tier"]) == SWUpdateTier.DEV
+        return self._settings.get(["dev", "software_tier"]) == SWUpdateTier.DEV.value
 
     def _get_mac_addresses(self):
         if not self._mac_addrs:
